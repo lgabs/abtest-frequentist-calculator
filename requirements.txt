@@ -1,0 +1,11 @@
+statsmodels
+scipy
+seaborn
+matplotlib
+pandas
+numpy
+notebook
+pytest
+pytest-runner
+black
+streamlit==1.13.0
