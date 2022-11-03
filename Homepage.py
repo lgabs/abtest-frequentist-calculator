@@ -4,13 +4,13 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-st.set_page_config(page_title="A/B Test Frequentist App", page_icon="📊")
+st.set_page_config(page_title="Frequentist A/B Test App", page_icon="📊")
 
 st.sidebar.markdown("# Main Page")
 
 st.markdown(
     """
-# 📊 A/B Test Frequentist App
+# 📊 Frequentist A/B Test App
 
 This is a tool to automate your decisions in an A/B Test Experiment with two alternatives, where 
 you want to know which one is better¹. It is focused on conversion and revenue evaluation, typical in e-commerce. It uses Frequentist Statistics.
