@@ -4,14 +4,17 @@ from abtests.frequentist_experiment_v2 import estimate_sample_size
 import streamlit as st
 
 import matplotlib.pyplot as plt
-plt.style.use('fivethirtyeight')
+
+plt.style.use("fivethirtyeight")
 
 st.set_page_config(page_title="Test_Planning", page_icon="📊")
 
 st.sidebar.markdown("# Test Planning")
 
 st.markdown("# Sample Size Calculator")
-st.markdown("Before running your test, make sure you'll have enough data. Fill in the following parameters:")
+st.markdown(
+    "Before running your test, make sure you'll have enough data. Fill in the following parameters:"
+)
 with st.form(key="my_form"):
     min_diff = st.number_input(
         label="minimum detectable effect you want to see (relative or absolute is the next parameter)",
@@ -21,8 +24,7 @@ with st.form(key="my_form"):
         label="Effect Type of the previous parameter", options=["absolute", "relative"]
     )
     mu_baseline = st.number_input(
-        label="Conversion rate for baseline variant (0 to 1.0)",
-        value=0.20
+        label="Conversion rate for baseline variant (0 to 1.0)", value=0.20
     )
     test_type = st.selectbox(
         label="Test type (one-sided or two-sided)",
@@ -43,28 +45,27 @@ if submit_button:
         mu_baseline=mu_baseline,
         test_type=test_type,
         estimated_impressions_daily=estimated_impressions_daily,
-        streamlit_print=True
+        streamlit_print=True,
     )
 
 
 st.markdown("# Plot sample sizes for different minimum expected differences")
-st.markdown("To choose some miminum detectable effect consistent with your traffic, you can plot a line that gives you the sample size for each minimum detactable effect. Fill in the following parameters:")
+st.markdown(
+    "To choose some miminum detectable effect consistent with your traffic, you can plot a line that gives you the sample size for each minimum detactable effect. Fill in the following parameters:"
+)
 
 with st.form(key="my_form2"):
     effect_type = st.selectbox(
         label="Effect Type of the previous parameter", options=["absolute", "relative"]
     )
     mu_baseline = st.number_input(
-        label="Conversion rate for baseline variant (0 to 1.0)",
-        value=0.20
+        label="Conversion rate for baseline variant (0 to 1.0)", value=0.20
     )
     min_diff_min = st.number_input(
-        label="Lower bound for the minimum expected difference",
-        value=0.01
+        label="Lower bound for the minimum expected difference", value=0.01
     )
     min_diff_max = st.number_input(
-        label="Upper bound for the minimum expected difference",
-        value=0.05
+        label="Upper bound for the minimum expected difference", value=0.05
     )
     min_diff_range = np.linspace(min_diff_min, min_diff_max, 100)
 
@@ -78,7 +79,8 @@ if submit_button2:
         streamlit_plot=True,
     )
 
-st.write("""
+st.write(
+    """
 ## Other references:
 - [calculator evan miller](https://www.evanmiller.org/ab-testing/sample-size.html). Big reference.
 - [ab test guide](https://abtestguide.com/abtestsize/), calculations differ by little (sometimes calculators use rules of thumb).
@@ -87,4 +89,5 @@ st.write("""
 - [How to calculate ab testing sample size - Stack Overflow](https://stackoverflow.com/questions/28046453/how-to-calculate-ab-testing-sample-size). Here I found a book about rules of thumb that follows
 - [Statistical Rules of Thumb](http://www.vanbelle.org/struts.htm) homepage. [Link to download](http://library.lol/main/3306598CAA57137F059CFC4875A4230F).
 - [another calculator - CXL](https://cxl.com/ab-test-calculator/)
-""")
+"""
+)
