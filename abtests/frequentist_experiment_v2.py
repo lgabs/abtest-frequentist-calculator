@@ -116,9 +116,9 @@ def estimate_sample_size(
     if effect_type == "relative":
         # convert to absolute
         min_diff = min_diff * mu_baseline
-    if verbose:
-        print(f"effect_type: {effect_type}")
-        print(f"Test type: {test_type}")
+    
+    logging.info(f"effect_type: {effect_type}")
+    logging.info(f"Test type: {test_type}")
 
     beta = 1 - power
     if test_type == "two-sided":
@@ -206,12 +206,12 @@ def plot_sample_sizes(
 
     f, ax = plt.subplots(figsize=(9, 7))
     df = pd.DataFrame(
-        data={"min_diff_range": min_diff_range, "sample_size": sample_sizes}
+        data={"Minimum Difference in Means": min_diff_range, "Sample Size Required": sample_sizes}
     )
     fig = px.line(
         df,
-        x="min_diff_range",
-        y="sample_size",
+        x="Minimum Difference in Means",
+        y="Sample Size Required",
         template='seaborn',
     )
     fig.update_layout(
@@ -224,16 +224,8 @@ def plot_sample_sizes(
             color="RebeccaPurple"
         )
     )
-    # fig.show()
 
-    # ax.plot(min_diff_range, sample_sizes)
-    # ax.set_xlabel("Expected Minimum Difference in Means")
-    # ax.set_ylabel("Sample Size Required per Variantion")
-    # ax.set_title(
-    #     f"Sample sizes Estimations\nalpha={significance}, power={power}, mean_baseline: {mu_baseline}"
-    # )
     if streamlit_plot:
-        # slit.pyplot(f)
         slit.plotly_chart(fig, use_container_width=False)
 
 

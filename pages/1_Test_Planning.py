@@ -61,6 +61,10 @@ with st.form(key="my_form2"):
     mu_baseline = st.number_input(
         label="Conversion rate for baseline variant (0 to 1.0)", value=0.20
     )
+    test_type = st.selectbox(
+        label="Test type (one-sided or two-sided)",
+        options=["two-sided", "one-sided"],
+    )
     min_diff_min = st.number_input(
         label="Lower bound for the minimum expected difference", value=0.01
     )
@@ -77,6 +81,7 @@ if submit_button2:
         effect_type=effect_type,
         mu_baseline=mu_baseline,
         streamlit_plot=True,
+        test_type=test_type,
     )
 
 st.write(
