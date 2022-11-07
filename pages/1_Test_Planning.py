@@ -1,6 +1,6 @@
-from abtests.frequentist_experiment_v2 import *
+from abtests.frequentist_experiment import *
 
-from abtests.frequentist_experiment_v2 import estimate_sample_size
+from abtests.frequentist_experiment import estimate_sample_size
 import streamlit as st
 
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ st.sidebar.markdown("# Test Planning")
 
 st.markdown("# Sample Size Calculator")
 st.markdown(
-    "Before running your test, make sure you'll have enough data. Fill in the following parameters:"
+    "Before running your test, make sure you'll have enough data. Fill in the following parameters (use the 'help' tooltip for details):"
 )
 with st.form(key="my_form"):
     min_diff = st.number_input(
@@ -30,6 +30,14 @@ with st.form(key="my_form"):
         label="Test type (one-sided or two-sided)",
         options=["two-sided", "one-sided"],
     )
+    objective_metric_type = st.multiselect(
+        label="Objective Metric Type",
+        options=["binary", "continuous"],
+        default='binary',
+        help="Choose some type for your metric. If it is a yes/no metric, with only two outcomes, choose 'binary'. If it's continous outcome, like revenue, cost, time in seconds, choose 'continuous'.",
+    )[0]
+    logging.info(f"objective_metric_type = {objective_metric_type}")
+
     estimated_impressions_daily = int(
         st.number_input(
             label="(optional) number of impressions daily per variant estimated a priori",
@@ -46,6 +54,7 @@ if submit_button:
         test_type=test_type,
         estimated_impressions_daily=estimated_impressions_daily,
         streamlit_print=True,
+        objective_metric_type=objective_metric_type,
     )
 
 
@@ -65,6 +74,13 @@ with st.form(key="my_form2"):
         label="Test type (one-sided or two-sided)",
         options=["two-sided", "one-sided"],
     )
+    objective_metric_type = st.multiselect(
+        label="Objective Metric Type",
+        options=["binary", "continuous"],
+        default='binary',
+        help="Choose some type for your metric. If it is a yes/no metric, with only two outcomes, choose 'binary'. If it's continous outcome, like revenue, cost, time in seconds, choose 'continuous'.",
+    )[0]
+
     min_diff_min = st.number_input(
         label="Lower bound for the minimum expected difference", value=0.01
     )
@@ -82,6 +98,7 @@ if submit_button2:
         mu_baseline=mu_baseline,
         streamlit_plot=True,
         test_type=test_type,
+        objective_metric_type=objective_metric_type,
     )
 
 st.write(

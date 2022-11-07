@@ -7,6 +7,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
 
+plt.style.use("fivethirtyeight")
+
+import plotly.express as px
+
+import streamlit as slit
+
 import logging
 
 # logging.basicConfig(level=logging.INFO)
@@ -39,32 +45,19 @@ def generate_binomial_data(
     return df
 
 
-def generate_conversion_data(
-    sizeA=100,
-    sizeB=100,
-    convA=20,
-    convB=20,
-):
+def generate_conversion_data(sizes=[], convs=[], labels=[]):
     """
     Generate data with exact convertions for simulating purposes.
     """
+    df = pd.DataFrame(columns=["variant", "target"])
+    for conv, size, label in zip(convs, sizes, labels):
+        df_conv = pd.DataFrame(data={"variant": [label] * conv, "target": [1] * conv})
+        df_notconv = pd.DataFrame(
+            data={"variant": [label] * (size - conv), "target": [0] * (size - conv)}
+        )
+        df = df.append(df_conv).append(df_notconv)
 
-    dfA1 = pd.DataFrame(data={"variant": ["A"] * convA, "target": [1] * convA})
-    dfA0 = pd.DataFrame(
-        data={"variant": ["A"] * (sizeA - convA), "target": [0] * (sizeA - convA)}
-    )
-    dfB1 = pd.DataFrame(data={"variant": ["B"] * convB, "target": [1] * convB})
-    dfB0 = pd.DataFrame(
-        data={"variant": ["B"] * (sizeB - convB), "target": [0] * (sizeB - convB)}
-    )
-
-    df = (
-        dfA0.append(dfA1)
-        .append(dfB0)
-        .append(dfB1)
-        .sample(frac=1)
-        .reset_index(drop=True)
-    )
+    df = df.sample(frac=1).reset_index(drop=True)
 
     return df
 
@@ -97,26 +90,22 @@ def estimate_sample_size(
     min_diff=None,
     effect_type="absolute",
     mu_baseline=None,
-    objective_metric_type="binomial",
+    objective_metric_type="binary",
     test_type="one-sided",
     sigma_estimation=None,
     estimated_impressions_daily=None,
+    streamlit_print=False,
     verbose=True,
 ):
     """
-    Estimates the minimum sample size required to run an A/B Test with desired specs (power, significance, mu_baseline and min_diff).
-    This is inspired on the Evan Miller's code and calculator, that's why we test this against his calculator.
-
-    https://www.evanmiller.org/ab-testing/sample-size.html
-
     Args:
         significance (float): desired significance for the test.
         power (float): desired power of the test.
         min_diff (float): desired minimum detectable effect in objective metric (relative or absolute in next param)
         effect_type: 'absolute' or 'relative'
         mu_baseline (float): baseline mean for objetivce metric (e.g. conversion rate, revenue).
-                             If metric is binomial like conversion rate, mu_baseline is the conversion rate or CTR.
-        objective_metric_type (str): type of objective metric. If 'binomial' and 'sigma_estimation' is None, sigma will be estimated with np.sqrt(p(1-p)) where p=mu.
+                             If metric is binary like conversion rate, mu_baseline is the conversion rate or CTR.
+        objective_metric_type (str): type of objective metric. If 'binary' and 'sigma_estimation' is None, sigma will be estimated with np.sqrt(p(1-p)) where p=mu.
         sigma_estimation (float): estimation of sigma, if user wants to use some pre-defined value
         estimated_impressions_daily (int): Impressions per variation daily.
                                            If given, estimates how many days and weeks would it be necessary to run the desired A/B test with given infos.
@@ -127,9 +116,9 @@ def estimate_sample_size(
     if effect_type == "relative":
         # convert to absolute
         min_diff = min_diff * mu_baseline
-    if verbose:
-        print(f"effect_type: {effect_type}")
-        print(f"Test type: {test_type}")
+
+    logging.info(f"effect_type: {effect_type}")
+    logging.info(f"Test type: {test_type}")
 
     beta = 1 - power
     if test_type == "two-sided":
@@ -141,9 +130,9 @@ def estimate_sample_size(
 
     z_beta = st.norm.ppf(1 - beta)
 
-    if objective_metric_type == "binomial":
+    if objective_metric_type == "binary":
         if verbose:
-            print(f"objective metric type: {objective_metric_type}")
+            logging.info(f"objective metric type: {objective_metric_type}")
         if sigma_estimation is None:
             p = mu_baseline
             sd1 = np.sqrt(2 * p * (1.0 - p))
@@ -151,6 +140,12 @@ def estimate_sample_size(
         else:
             sd1 = sigma_estimation
             sd2 = sigma_estimation
+    elif objective_metric_type == 'continuous':
+        # TODO: code this part
+        raise NotImplementedError('This type of objective metric is not implemented.')
+    else:
+        raise ValueError("objective_metric_type must be either 'binary' or 'continuous'")
+
 
     # estimate sample size n
     n = int(round((z_alpha * sd1 + z_beta * sd2) ** 2 / min_diff**2))
@@ -163,11 +158,31 @@ def estimate_sample_size(
         print(f"min_diff is {round(min_diff / sd1, 2)} sigma1's")
         print(f"estimate for sample size: {n} samples per variation.")
 
+    phrase_days_estimations = ""
     if estimated_impressions_daily and verbose:
         days = np.ceil(n / estimated_impressions_daily)
         weeks = round(days / 7, 2)
-        print(
-            f"With {estimated_impressions_daily} impressions per day, you will need about {days} days or {weeks} weeks to run this A/B Test."
+        phrase_days_estimations = f"With {estimated_impressions_daily} impressions per day, you will need about {days} days or {weeks} weeks to run this A/B Test."
+        print(phrase_days_estimations)
+
+    if streamlit_print:
+
+        slit.write(
+            f"""
+        effect_type: {effect_type}\n
+        Test type: {test_type}\n
+        objective metric type: {objective_metric_type}
+
+        baseline mean: {round(100*mu_baseline,2)}%\n
+        min diff absoute: {round(100*min_diff,2)}%\n
+        min diff relative: {round(100*min_diff/mu_baseline,2)}%\n
+        sigma1, sigma2: {sd1}, {sd2}\n
+        min_diff is {round(min_diff / sd1, 2)} sigma1's
+
+        ### Estimate for sample size: {n} samples per variation.
+
+        {phrase_days_estimations}
+        """
         )
 
     return n
@@ -179,6 +194,7 @@ def plot_sample_sizes(
     significance=0.05,
     power=0.80,
     verbose=False,
+    streamlit_plot=False,
     **kargs,
 ):
     sample_sizes = [] * len(min_diff_range)
@@ -195,12 +211,27 @@ def plot_sample_sizes(
         )
 
     f, ax = plt.subplots(figsize=(9, 7))
-    ax.plot(min_diff_range, sample_sizes)
-    ax.set_xlabel("Expected Minimum Difference in Means")
-    ax.set_ylabel("Sample Size Required per Variantion")
-    ax.set_title(
-        f"Sample sizes Estimations\nalpha={significance}, power={power}, mean_baseline: {mu_baseline}"
+    df = pd.DataFrame(
+        data={
+            "Minimum Difference in Means": min_diff_range,
+            "Sample Size Required": sample_sizes,
+        }
     )
+    fig = px.line(
+        df,
+        x="Minimum Difference in Means",
+        y="Sample Size Required",
+        template="seaborn",
+    )
+    fig.update_layout(
+        title=f"Sample sizes Estimations <br> alpha={significance}, power={power}, mean_baseline: {mu_baseline}",
+        xaxis_title="Expected Minimum Difference in Means (absolute values)",
+        yaxis_title="Sample Size Required per Variantion",
+        font=dict(family="Courier New, monospace", size=10, color="RebeccaPurple"),
+    )
+
+    if streamlit_plot:
+        slit.plotly_chart(fig, use_container_width=False)
 
 
 def estimate_minimum_detectable_diff(
@@ -208,7 +239,7 @@ def estimate_minimum_detectable_diff(
     power=0.80,
     current_sample_size=None,
     mu_baseline=None,
-    objective_metric_type="binomial",
+    objective_metric_type="binary",
     test_type="one-sided",
     sigma_estimation=None,
 ):
@@ -223,7 +254,7 @@ def estimate_minimum_detectable_diff(
 
     z_beta = st.norm.ppf(1 - beta)
 
-    if objective_metric_type == "binomial":
+    if objective_metric_type == "binary":
         if sigma_estimation is None:
             p = mu_baseline
             sd1 = np.sqrt(2 * p * (1.0 - p))
@@ -252,20 +283,22 @@ class FrequentistExperiment:
         alternative="larger",
         significance=0.05,
         power=0.80,
+        labels=["A", "B"],
         verbose=True,
     ):
         """
         Args:
             df (pd.DataFrame): dataframe with data. Must have two columns: 'variant' (str) with variant names and 'target' (float) with observed values.
             diff_baseline (float): baseline difference between means
-            test_dist (str): distribution for target values. 'proportions-ztest' is default for binomial and 'ztest' for continuous means
+            test_dist (str): distribution for target values. 'proportions-ztest' is default for binary and 'ztest' for continuous means
             alternative (str): type of test. 'larger' or right-sided, like statsmodel definitions
             significance (float): significance for the test
         """
 
         self.df = df
-        x1 = df.query("variant=='A'")["target"].dropna().to_numpy()
-        x2 = df.query("variant=='B'")["target"].dropna().to_numpy()
+        self.labels = labels
+        x1 = df.query(f"variant=='{labels[0]}'")["target"].dropna().to_numpy()
+        x2 = df.query(f"variant=='{labels[1]}'")["target"].dropna().to_numpy()
         self.x1 = x1
         if len(x2) == 0:
             self.x2 = None
@@ -304,7 +337,7 @@ class FrequentistExperiment:
             )
 
         elif self.test_dist == "proportions-ztest":
-            self.objective_metric_type = "binomial"
+            self.objective_metric_type = "binary"
             sucess1 = np.count_nonzero(self.x1 == 1)
             sucess2 = np.count_nonzero(self.x2 == 1)
             # order is inverse because we want to test if p2 - p1 > diff_baseline and lib tests p1 - p2 > diff_baseline
@@ -424,7 +457,12 @@ class FrequentistExperiment:
 
     def plot_timeline(self, step=100, ax=None, **kargs):
         plot_timeline_experiments(
-            df=self.df, step=step, ax=ax, sample_size=self.sample_size, **kargs
+            df=self.df,
+            labels=self.labels,
+            step=step,
+            ax=ax,
+            sample_size=self.sample_size,
+            **kargs,
         )
 
 
@@ -455,6 +493,7 @@ def plot_norm_distribution(x, test_dist="proportions-ztest", ax=None, variant=No
 
 def plot_timeline_experiments(
     df,
+    labels,
     step,
     ax=None,
     plot_significance=True,
@@ -467,6 +506,9 @@ def plot_timeline_experiments(
     if not ax:
         f, ax = plt.subplots(figsize=(9, 7))
 
+    df = df.copy()
+    df = df[df.variant.isin(labels)]
+
     results = {"samples_so_far": [], "statistic": [], "pvalue": [], "passed": []}
     samples = df.shape[0]
     experiment_args["verbose"] = experiment_args.get("verbose", False)
@@ -475,7 +517,7 @@ def plot_timeline_experiments(
     for i in range(0, samples, step - 1):
         _df = df.iloc[:i]
         if _df.groupby("variant").count().shape[0] == 2:
-            experiment = FrequentistExperiment(_df, **experiment_args)
+            experiment = FrequentistExperiment(_df, labels=labels, **experiment_args)
             result = experiment.run()
             results["samples_so_far"].append(i + 1)
             for k, v in result.items():

@@ -3,3 +3,5 @@ build:
 install:
 	pip install `ls dist/*.whl`
 
+run:
+	streamlit run Homepage.py
