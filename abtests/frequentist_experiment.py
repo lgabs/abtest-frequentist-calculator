@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.weightstats import ztest
 from statsmodels.stats.proportion import proportions_ztest
-import scipy.stats as st
+from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
@@ -11,7 +11,7 @@ plt.style.use("fivethirtyeight")
 
 import plotly.express as px
 
-import streamlit as slit
+import streamlit as st
 
 import logging
 
@@ -76,8 +76,8 @@ def confidence_interval(X, significance=0.05, sigma_estimation=None):
     mu_hat = np.mean(X)
     if sigma_estimation is None:
         sigma_estimation = np.std(X, ddof=1)
-    z_left = st.norm.ppf(significance / 2)
-    z_right = st.norm.ppf((1 - significance / 2))
+    z_left = stats.norm.ppf(significance / 2)
+    z_right = stats.norm.ppf((1 - significance / 2))
     lower = mu_hat + z_left * sigma_estimation / np.sqrt(N)
     upper = mu_hat + z_right * sigma_estimation / np.sqrt(N)
 
@@ -122,13 +122,13 @@ def estimate_sample_size(
 
     beta = 1 - power
     if test_type == "two-sided":
-        z_alpha = st.norm.ppf(1 - significance / 2)
+        z_alpha = stats.norm.ppf(1 - significance / 2)
     elif test_type == "one-sided":
-        z_alpha = st.norm.ppf(1 - significance)
+        z_alpha = stats.norm.ppf(1 - significance)
     else:
         raise ValueError("You should define between one-sided and two-sided.")
 
-    z_beta = st.norm.ppf(1 - beta)
+    z_beta = stats.norm.ppf(1 - beta)
 
     if objective_metric_type == "binary":
         if verbose:
@@ -140,23 +140,24 @@ def estimate_sample_size(
         else:
             sd1 = sigma_estimation
             sd2 = sigma_estimation
-    elif objective_metric_type == 'continuous':
+    elif objective_metric_type == "continuous":
         # TODO: code this part
-        raise NotImplementedError('This type of objective metric is not implemented.')
+        raise NotImplementedError("This type of objective metric is not implemented.")
     else:
-        raise ValueError("objective_metric_type must be either 'binary' or 'continuous'")
-
+        raise ValueError(
+            "objective_metric_type must be either 'binary' or 'continuous'"
+        )
 
     # estimate sample size n
     n = int(round((z_alpha * sd1 + z_beta * sd2) ** 2 / min_diff**2))
 
     if verbose:
-        print(f"baseline mean: {round(100*mu_baseline,2)}%")
-        print(f"min diff absoute: {round(100*min_diff,2)}%")
-        print(f"min diff relative: {round(100*min_diff/mu_baseline,2)}%")
-        print("sigma1, sigma2: ", sd1, sd2)
-        print(f"min_diff is {round(min_diff / sd1, 2)} sigma1's")
-        print(f"estimate for sample size: {n} samples per variation.")
+        logging.info(f"baseline mean: {round(100*mu_baseline,2)}%")
+        logging.info(f"min diff absoute: {round(100*min_diff,2)}%")
+        logging.info(f"min diff relative: {round(100*min_diff/mu_baseline,2)}%")
+        logging.info("sigma1, sigma2: ", sd1, sd2)
+        logging.info(f"min_diff is {round(min_diff / sd1, 2)} sigma1's")
+        logging.info(f"estimate for sample size: {n} samples per variation.")
 
     phrase_days_estimations = ""
     if estimated_impressions_daily and verbose:
@@ -166,8 +167,7 @@ def estimate_sample_size(
         print(phrase_days_estimations)
 
     if streamlit_print:
-
-        slit.write(
+        st.write(
             f"""
         effect_type: {effect_type}\n
         Test type: {test_type}\n
@@ -176,7 +176,8 @@ def estimate_sample_size(
         baseline mean: {round(100*mu_baseline,2)}%\n
         min diff absoute: {round(100*min_diff,2)}%\n
         min diff relative: {round(100*min_diff/mu_baseline,2)}%\n
-        sigma1, sigma2: {sd1}, {sd2}\n
+        
+        sigma1, sigma2: {round(sd1, 2)}, {round(sd2,2)}\n
         min_diff is {round(min_diff / sd1, 2)} sigma1's
 
         ### Estimate for sample size: {n} samples per variation.
@@ -231,7 +232,7 @@ def plot_sample_sizes(
     )
 
     if streamlit_plot:
-        slit.plotly_chart(fig, use_container_width=False)
+        st.plotly_chart(fig, use_container_width=False)
 
 
 def estimate_minimum_detectable_diff(
@@ -246,13 +247,13 @@ def estimate_minimum_detectable_diff(
 
     beta = 1 - power
     if test_type == "two-sided":
-        z_alpha = st.norm.ppf(1 - significance / 2)
+        z_alpha = stats.norm.ppf(1 - significance / 2)
     elif test_type == "one-sided":
-        z_alpha = st.norm.ppf(1 - significance)
+        z_alpha = stats.norm.ppf(1 - significance)
     else:
         raise ValueError("You should define between one-sided and two-sided.")
 
-    z_beta = st.norm.ppf(1 - beta)
+    z_beta = stats.norm.ppf(1 - beta)
 
     if objective_metric_type == "binary":
         if sigma_estimation is None:
@@ -289,7 +290,7 @@ class FrequentistExperiment:
         """
         Args:
             df (pd.DataFrame): dataframe with data. Must have two columns: 'variant' (str) with variant names and 'target' (float) with observed values.
-            diff_baseline (float): baseline difference between means
+            diff_baseline (float): baseline difference between means. Usually is zero.
             test_dist (str): distribution for target values. 'proportions-ztest' is default for binary and 'ztest' for continuous means
             alternative (str): type of test. 'larger' or right-sided, like statsmodel definitions
             significance (float): significance for the test
@@ -314,7 +315,7 @@ class FrequentistExperiment:
         self.verbose = verbose
 
         if alternative == "larger" and self.verbose:
-            logging.warning(
+            logging.info(
                 "Default alternative='larger' param stand for checking whether x2_metric-x1_metric is relevant, i.e., it's a right-sided test."
             )
 
@@ -327,7 +328,7 @@ class FrequentistExperiment:
         """
         self.sample_size = n
 
-    def run(self):
+    def run(self, should_print_streamlit_report=False):
         if self.test_dist == "ztest":
             z, p = ztest(
                 x1=self.x2,
@@ -346,6 +347,10 @@ class FrequentistExperiment:
             samples = np.array([len(self.x2), len(self.x1)])
             z, p = proportions_ztest(
                 count=successes, nobs=samples, alternative=self.alternative
+            )
+        else:
+            raise ValueError(
+                "test_dist should be either 'ztest' or 'proportions-ztest'."
             )
 
         if self.verbose:
@@ -386,7 +391,7 @@ class FrequentistExperiment:
                     self.test_type,
                 )
                 print(
-                    f"\nFor your sample size, the detectable difference estimated is: {self.detectable_size}"
+                    f"\nFor your sample size, the absolute detectable difference estimated is: {self.detectable_size}"
                 )
                 if min(len(self.x1), len(self.x2)) < self.sample_size:
                     logging.warning(
@@ -421,6 +426,12 @@ class FrequentistExperiment:
                     + CEND
                     + f" the null hypothesis for significance {self.significance}."
                 )
+        if should_print_streamlit_report:
+            print_streamlit_report(
+                self,
+                z,
+                p,
+            )
 
         return {"statistic": z, "pvalue": p, "passed": (p <= self.significance)}
 
@@ -482,11 +493,11 @@ def plot_norm_distribution(x, test_dist="proportions-ztest", ax=None, variant=No
         p = mu_hat
         sigma_hat = np.sqrt(p * (1 - p))
 
-    samples = st.norm.rvs(loc=mu_hat, scale=sigma_hat / np.sqrt(N), size=1000)
+    samples = stats.norm.rvs(loc=mu_hat, scale=sigma_hat / np.sqrt(N), size=1000)
     xmin, xmax = np.min(samples), np.max(samples)
 
     x = np.linspace(xmin, xmax, 1000)
-    probs = st.norm.pdf(x, mu_hat, sigma_hat / np.sqrt(N))
+    probs = stats.norm.pdf(x, mu_hat, sigma_hat / np.sqrt(N))
     label = f"variant {variant}: {round(100. * mu_hat, 2)}%"
     ax.plot(x, probs, label=label)
 
@@ -553,3 +564,82 @@ def plot_timeline_experiments(
     ax.set_ylabel("p-value", fontsize=15)
 
     plt.legend()
+
+
+def print_streamlit_report(
+    experiment,
+    z,
+    p,
+):
+    if experiment.test_dist == "proportions-ztest":
+        means_or_proportions_title = "Proportions"
+    else:
+        means_or_proportions_title = "Means"
+
+    st.write(
+        f"""
+    ### Experiment finished.
+    samples in control: {len(experiment.x1)}\n
+    samples in treatment: {len(experiment.x2)}\n
+
+    z-statistic: {z}\n
+    **p-value: {p}**\n
+    significance: {experiment.significance}\n
+    absolute diff in means under H0: {experiment.diff_baseline}
+
+    {means_or_proportions_title}:\n
+    \tcontrol: {round(experiment.x1.mean(),4)}\n
+    \ttreatment: {round(experiment.x2.mean(),4)}\n
+    \ttreatment - control: {round(experiment.x2.mean() - experiment.x1.mean(),4)} ({round(100. * (experiment.x2.mean() / experiment.x1.mean() - 1), 2 ) }% relative diff)
+    """
+    )
+    # checks if minimum sample size was defined
+    if not experiment.sample_size:
+        st.warning(
+            body="""
+            You did not set previously any Minimum Sample Size to your Experiment. Do not trust
+             any test's statistics without defining your sample size before and waiting until your
+              data reaches it.
+            """,
+            icon="⚠️",
+        )
+    else:
+        experiment.detectable_size = estimate_minimum_detectable_diff(
+            experiment.significance,
+            experiment.power,
+            len(experiment.x2),
+            experiment.mu_baseline,
+            experiment.objective_metric_type,
+            experiment.test_type,
+        )
+        st.write(
+            f"\nFor your sample size, the detectable difference estimated is: {experiment.detectable_size}"
+        )
+        if min(len(experiment.x1), len(experiment.x2)) < experiment.sample_size:
+            st.warning(
+                body=f"""
+                Your experiment **DID NOT REACH**
+                minimum {experiment.sample_size} sample size for one or more variants. Do not trust the result below.
+                """,
+                icon="⚠️",
+            )
+        else:
+            st.write(
+                f"""
+                \nYou experiment **HAS SUFFICIENT IMPRESSIONS** 
+                for both variants compared to minimum {experiment.sample_size} sample size.
+                """
+            )
+        if p <= experiment.significance:
+            st.success(
+                body=f"""
+            You CAN REJECT the null hypothesis for significance {experiment.significance}.
+            """,
+                icon="✅",
+            )
+        else:
+            st.warning(
+                body=f"""
+            You CAN NOT REJECT the null hypothesis for significance {experiment.significance}.
+            """
+            )

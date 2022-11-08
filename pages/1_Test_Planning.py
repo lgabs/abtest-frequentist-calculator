@@ -1,6 +1,7 @@
 from abtests.frequentist_experiment import *
-
 from abtests.frequentist_experiment import estimate_sample_size
+from utils import help_strings
+
 import streamlit as st
 
 import matplotlib.pyplot as plt
@@ -9,33 +10,38 @@ plt.style.use("fivethirtyeight")
 
 st.set_page_config(page_title="Test_Planning", page_icon="📊")
 
-st.sidebar.markdown("# Test Planning")
-
 st.markdown("# Sample Size Calculator")
 st.markdown(
-    "Before running your test, make sure you'll have enough data. Fill in the following parameters (use the 'help' tooltip for details):"
+    "Before running your test, make sure you'll have enough data. Fill in the following parameters (use the '?' tooltip symbol for details):"
 )
 with st.form(key="my_form"):
     min_diff = st.number_input(
         label="minimum detectable effect you want to see (relative or absolute is the next parameter)",
         value=0.05,
+        help="If you are expecting to increase your metric by 5%, this is the minimum detectable effect you have to choose.",
     )
     effect_type = st.selectbox(
-        label="Effect Type of the previous parameter", options=["absolute", "relative"]
+        label="Effect Type of the previous parameter",
+        options=["absolute", "relative"],
+        help="Example: if you expect to increase your metric from 10% to 5%, this is a 50% relative increase and a 5% absolute increase.",
     )
     mu_baseline = st.number_input(
-        label="Conversion rate for baseline variant (0 to 1.0)", value=0.20
+        label="Metric commom value for baseline variant",
+        value=0.20,
+        help="Ex: if you're studying conversions and you current baseline variant converts 20%, chose 20% here. If you're studying ARPU and your typical value is R$ 0.12, chose this value.",
     )
     test_type = st.selectbox(
-        label="Test type (one-sided or two-sided)",
-        options=["two-sided", "one-sided"],
+        label="Test type (right-sided or two-sided)",
+        options=["right-sided", "two-sided"],
+        help=help_strings["test_type"],
     )
-    objective_metric_type = st.multiselect(
+    test_type = test_type if test_type == "two-sided" else "one-sided"
+    objective_metric_type = st.selectbox(
         label="Objective Metric Type",
         options=["binary", "continuous"],
-        default='binary',
-        help="Choose some type for your metric. If it is a yes/no metric, with only two outcomes, choose 'binary'. If it's continous outcome, like revenue, cost, time in seconds, choose 'continuous'.",
-    )[0]
+        help=help_strings["objective_metric_type"],
+    )
+
     logging.info(f"objective_metric_type = {objective_metric_type}")
 
     estimated_impressions_daily = int(
@@ -46,16 +52,16 @@ with st.form(key="my_form"):
 
     submit_button = st.form_submit_button(label="Calculate Sample Size")
 
-if submit_button:
-    estimate_sample_size(
-        min_diff=min_diff,
-        effect_type=effect_type,
-        mu_baseline=mu_baseline,
-        test_type=test_type,
-        estimated_impressions_daily=estimated_impressions_daily,
-        streamlit_print=True,
-        objective_metric_type=objective_metric_type,
-    )
+    if submit_button:
+        estimate_sample_size(
+            min_diff=min_diff,
+            effect_type=effect_type,
+            mu_baseline=mu_baseline,
+            test_type=test_type,
+            estimated_impressions_daily=estimated_impressions_daily,
+            streamlit_print=True,
+            objective_metric_type=objective_metric_type,
+        )
 
 
 st.markdown("# Plot sample sizes for different minimum expected differences")
@@ -68,16 +74,19 @@ with st.form(key="my_form2"):
         label="Effect Type of the previous parameter", options=["absolute", "relative"]
     )
     mu_baseline = st.number_input(
-        label="Conversion rate for baseline variant (0 to 1.0)", value=0.20
+        label="Metric commom value for baseline variant", value=0.20
     )
     test_type = st.selectbox(
-        label="Test type (one-sided or two-sided)",
-        options=["two-sided", "one-sided"],
+        label="Test type (right-sided or two-sided)",
+        options=["two-sided", "right-sided"],
+        help=help_strings["test_type"],
     )
+    test_type = test_type if test_type == "two-sided" else "one-sided"
+
     objective_metric_type = st.multiselect(
         label="Objective Metric Type",
         options=["binary", "continuous"],
-        default='binary',
+        default="binary",
         help="Choose some type for your metric. If it is a yes/no metric, with only two outcomes, choose 'binary'. If it's continous outcome, like revenue, cost, time in seconds, choose 'continuous'.",
     )[0]
 
@@ -100,16 +109,3 @@ if submit_button2:
         test_type=test_type,
         objective_metric_type=objective_metric_type,
     )
-
-st.write(
-    """
-## Other references:
-- [calculator evan miller](https://www.evanmiller.org/ab-testing/sample-size.html). Big reference.
-- [ab test guide](https://abtestguide.com/abtestsize/), calculations differ by little (sometimes calculators use rules of thumb).
-- [discussion in YC's Forum (advanced)](https://news.ycombinator.com/item?id=13437431)
-- [Sample Sizes Required - Suny Polytechnich](https://www.itl.nist.gov/div898/handbook/prc/section2/prc222.htm) 
-- [How to calculate ab testing sample size - Stack Overflow](https://stackoverflow.com/questions/28046453/how-to-calculate-ab-testing-sample-size). Here I found a book about rules of thumb that follows
-- [Statistical Rules of Thumb](http://www.vanbelle.org/struts.htm) homepage. [Link to download](http://library.lol/main/3306598CAA57137F059CFC4875A4230F).
-- [another calculator - CXL](https://cxl.com/ab-test-calculator/)
-"""
-)
