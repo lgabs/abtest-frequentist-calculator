@@ -4,7 +4,11 @@ import streamlit as st
 st.write(
     """
 ## About A/B Testing
+- [What is A/B Testing](https://en.wikipedia.org/wiki/A/B_testing)
+- [introduction](https://towardsdatascience.com/frequentist-a-b-testing-explained-90b9ce8c28b9) to frequentist A/B Testing
+- [MIT Class](https://www.mit.edu/~6.s085/notes/lecture2.pdf) about  hypothesis testing
 - [What is Power Analysis](https://cxl.com/blog/statistical-power/)
+- A very good [course](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/) in udemy about A/B Testing, comparing with Baysian approach
 """
 )
 
