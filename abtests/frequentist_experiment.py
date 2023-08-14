@@ -161,7 +161,7 @@ def estimate_sample_size(
 
     phrase_days_estimations = ""
     if estimated_impressions_daily and verbose:
-        days = np.ceil(n / estimated_impressions_daily)
+        days = np.ceil(n / ( estimated_impressions_daily / 2)) # divide by 2 since we're looking at each variant separately
         weeks = round(days / 7, 2)
         phrase_days_estimations = f"With {estimated_impressions_daily} impressions per day, you will need about {days} days or {weeks} weeks to run this A/B Test."
         print(phrase_days_estimations)
